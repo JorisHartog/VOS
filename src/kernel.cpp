@@ -12,7 +12,7 @@ void printf(char* str) {
 }
 
 extern "C" void kernelMain(void* multiboot_structure, uint32_t magicnumber) {
-  printf("Hi there!\n");
+  printf("Hi there! :D");
 
   GlobalDescriptorTable gdt;
 
