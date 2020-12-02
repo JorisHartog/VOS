@@ -13,7 +13,7 @@ menuentry 'VOS' {
 endef
 export GRUB_CFG
 
-objects = loader.o kernel.o
+objects = loader.o gdt.o kernel.o
 
 %.o: src/%.cpp
 	g++ $(GPPPARAMS) -o $@ -c $<
