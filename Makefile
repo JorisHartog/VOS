@@ -33,3 +33,7 @@ vos.iso: vos.bin
 	echo "$$GRUB_CFG" > iso/boot/grub/grub.cfg
 	grub2-mkrescue --output=$@ iso
 	rm -rf iso
+
+.PHONY: clean
+clean:
+	rm -f $(objects) vos.bin vos.iso
