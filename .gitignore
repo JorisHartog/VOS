@@ -1,0 +1,6 @@
+.vagrant/
+iso/
+*.o
+*.bin
+*.swp
+*.iso
