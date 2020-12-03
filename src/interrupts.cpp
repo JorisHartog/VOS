@@ -2,7 +2,27 @@
 
 void printf(const char* str);
 
+InterruptHandler::InterruptHandler(
+    uint8_t interrupt,
+    InterruptManager* interruptManager
+) {
+  this->interrupt = interrupt;
+  this->interruptManager = interruptManager;
+  interruptManager->handlers[interrupt] = this;
+}
+
+InterruptHandler::~InterruptHandler() {
+  if (interruptManager->handlers[interrupt] == this)
+    interruptManager->handlers[interrupt] = 0;
+}
+
+uint32_t InterruptHandler::HandleInterrupt(uint32_t esp) {
+  return esp;
+}
+
 InterruptManager::GateDescriptor InterruptManager::interruptDescriptorTable[256];
+
+InterruptManager* InterruptManager::ActiveInterruptManager = 0;
 
 void InterruptManager::SetInterruptDescriptorTableEntry(
     uint8_t interrupt,
@@ -32,9 +52,11 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
   uint32_t CodeSegment = gdt->CodeSegmentSelector();
   const uint8_t IDT_INTERRUPT_GATE = 0xE;
 
-  for (uint16_t i = 0; i < 256; i++)
+  for (uint16_t i = 0; i < 256; i++) {
+    handlers[i] = 0;
     SetInterruptDescriptorTableEntry(i, CodeSegment, &InterruptIgnore, 0,
         IDT_INTERRUPT_GATE);
+  }
 
   SetInterruptDescriptorTableEntry(0x20, CodeSegment,
       &HandleInterruptRequest0x00, 0, IDT_INTERRUPT_GATE);
@@ -67,19 +89,52 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
 InterruptManager::~InterruptManager() {}
 
 void InterruptManager::Activate() {
+  if (ActiveInterruptManager != 0)
+    ActiveInterruptManager->Deactivate();
+  ActiveInterruptManager = this;
   asm("sti");
+}
+
+void InterruptManager::Deactivate() {
+  ActiveInterruptManager = 0;
+  asm("cli");
 }
 
 uint32_t InterruptManager::HandleInterrupt(
     uint8_t interrupt,
     uint32_t esp
 ) {
-  char* foo = "INTERRUPT 0x00\n";
-  char* hex = "0123456789ABCDEF";
+  if (ActiveInterruptManager != 0) {
+    return ActiveInterruptManager->DoHandleInterrupt(interrupt, esp);
+  }
 
-  foo[12] = hex[(interrupt >> 4) & 0xF];
-  foo[13] = hex[interrupt & 0xF];
-  printf(foo);
+  return esp;
+}
+
+uint32_t InterruptManager::DoHandleInterrupt(
+    uint8_t interrupt,
+    uint32_t esp
+) {
+  if (handlers[interrupt] != 0) {
+    esp = handlers[interrupt]->HandleInterrupt(esp);
+  } else if (interrupt != 0x20) {
+    // Unhandled interrupt which is not a timer interrupt
+    char* foo = "INTERRUPT 0x00\n";
+    char* hex = "0123456789ABCDEF";
+
+    foo[12] = hex[(interrupt >> 4) & 0xF];
+    foo[13] = hex[interrupt & 0xF];
+    printf(foo);
+  }
+
+  if (0x20 <= interrupt && interrupt < 0x30) {
+    // Acknowledge hardware interrupt
+    picPrimaryCommand.Write(0x20);
+    if (0x28 <= interrupt) {
+      // Interrupt came from secundary PIC
+      picSecondaryCommand.Write(0x20);
+    }
+  }
 
   return esp;
 }
