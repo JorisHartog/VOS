@@ -10,7 +10,11 @@ make install
 
 ## Development
 
-Create a bootable ISO using vagrant:
+Setup rust:
+
+```
+rustup target add thumbv7em-none-eabihf
+```
 
 ```bash
 vagrant up

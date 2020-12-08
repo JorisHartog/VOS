@@ -2,7 +2,11 @@
 # vi: set ft=ruby :
 
 $installer = <<-INSTALLER
-yum -y install gcc-c++ binutils glibc-devel.i686 grub2 xorriso
+yum -y install grub2 xorriso
+command -v rustc || \
+  (curl https://sh.rustup.rs -sSf -o install.sh; sh ./install.sh -y -q)
+source $HOME/.cargo/env
+rustup target add thumbv7em-none-eabihf
 cd /vagrant
 make vos.iso
 INSTALLER

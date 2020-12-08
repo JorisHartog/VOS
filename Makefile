@@ -1,6 +1,4 @@
-GPPPARAMS = -m32 -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore
-ASPARAMS = --32
-LDPARAMS = -melf_i386
+RUSTCPARAMS = --target=thumbv7em-none-eabihf
 
 define GRUB_CFG
 set timeout=0
@@ -13,16 +11,8 @@ menuentry 'VOS' {
 endef
 export GRUB_CFG
 
-objects = loader.o gdt.o port.o keyboard.o interruptstubs.o interrupts.o kernel.o
-
-%.o: src/%.cpp
-	g++ $(GPPPARAMS) -o $@ -c $<
-
-%.o: src/%.s
-	as $(ASPARAMS) -o $@ $<
-
-vos.bin: src/linker.ld $(objects)
-	ld $(LDPARAMS) -T $< -o $@ $(objects)
+vos.bin: src/main.rs
+	rustc $(RUSTCPARAMS) $< -o $@
 
 install: vos.bin
 	sudo cp $< /boot/vos.bin
@@ -36,4 +26,4 @@ vos.iso: vos.bin
 
 .PHONY: clean
 clean:
-	rm -f $(objects) vos.bin vos.iso
+	rm -f vos.bin vos.iso
