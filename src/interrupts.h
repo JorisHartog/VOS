@@ -4,6 +4,7 @@
 #include "types.h"
 #include "port.h"
 #include "gdt.h"
+#include "procs.h"
 
 class InterruptManager;
 
@@ -12,7 +13,7 @@ class InterruptHandler {
     uint8_t interrupt;
     InterruptManager* interruptManager;
 
-    InterruptHandler(uint8_t interrupt, InterruptManager* interruptManager);
+    InterruptHandler(InterruptManager* interruptManager, uint8_t interrupt);
     ~InterruptHandler();
 
   public:
@@ -24,6 +25,7 @@ class InterruptManager {
   protected:
     static InterruptManager* ActiveInterruptManager;
     InterruptHandler* handlers[256];
+    ProcessManager* processManager;
 
     struct GateDescriptor {
       uint16_t handlerAddressLowBits;
@@ -58,7 +60,7 @@ class InterruptManager {
     Port8BitSlow picSecondaryData;
 
   public:
-    InterruptManager(GlobalDescriptorTable* gdt);
+    InterruptManager(GlobalDescriptorTable* gdt,ProcessManager* processManager);
     ~InterruptManager();
 
     void Activate();

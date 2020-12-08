@@ -3,7 +3,7 @@
 void printf(const char*);
 
 KeyboardDriver::KeyboardDriver(InterruptManager* manager)
-: InterruptHandler(0x21, manager),
+: InterruptHandler(manager, 0x21),
   dataport(0x60),
   commandport(0x64) {
   // Clear out buffer
@@ -77,7 +77,7 @@ uint32_t KeyboardDriver::HandleInterrupt(uint32_t esp) {
 
       default:
         {
-          char *s = " 0x00 ";
+          char *s = (char*)" 0x00 ";
           const char *hex = "0123456789ABCDEF";
           s[3] = hex[(key >> 4) & 0xF];
           s[4] = hex[key & 0xF];

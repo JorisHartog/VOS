@@ -13,7 +13,8 @@ menuentry 'VOS' {
 endef
 export GRUB_CFG
 
-objects = loader.o gdt.o port.o keyboard.o interruptstubs.o interrupts.o kernel.o
+objects = loader.o gdt.o port.o keyboard.o interruptstubs.o interrupts.o \
+					procs.o kernel.o utils.o
 
 %.o: src/%.cpp
 	g++ $(GPPPARAMS) -o $@ -c $<
@@ -21,7 +22,7 @@ objects = loader.o gdt.o port.o keyboard.o interruptstubs.o interrupts.o kernel.
 %.o: src/%.s
 	as $(ASPARAMS) -o $@ $<
 
-vos.bin: src/linker.ld $(objects)
+vos.bin: linker.ld $(objects)
 	ld $(LDPARAMS) -T $< -o $@ $(objects)
 
 install: vos.bin

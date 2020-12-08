@@ -1,42 +1,17 @@
+#include "utils.h"
 #include "types.h"
 #include "gdt.h"
 #include "interrupts.h"
+#include "procs.h"
 #include "keyboard.h"
 
-void printf(const char* str) {
-  static uint16_t* VideoMemory = (uint16_t*)0xb8000;
-  static uint8_t x=0, y=0;
+void testA() {
+  printf("This is testA, I'm done\n");
+}
 
-  for (int i = 0; str[i] != '\0'; i++) {
-    // Copy each character to the video memory, but retain the high byte which
-    // contains color info.
-    switch(str[i]) {
-      case '\n':
-        x = 0;
-        y++;
-        break;
-      default:
-        VideoMemory[y*80 + x] = (VideoMemory[i] & 0xFF00) | str[i];
-        x++;
-    }
-  }
-
-  if (x >= 80) {
-    x = 0;
-    y++;
-  }
-
-  if (y >= 25) {
-    for (y = 1; y < 25; y++)
-      for (x = 0; x < 80; x++)
-        VideoMemory[(y-1)*80 + x] = VideoMemory[y*80 + x];
-
-    for (x = 0; x < 80; x++)
-      VideoMemory[24*80 + x] = (VideoMemory[24*80 + x] & 0xFF00) | ' ';
-
-    x = 0;
-    y = 24;
-  }
+void testB() {
+  while(1)
+    printf("B");
 }
 
 extern "C" void kernelMain(void* multiboot_structure, uint32_t magicnumber) {
@@ -52,14 +27,26 @@ extern "C" void kernelMain(void* multiboot_structure, uint32_t magicnumber) {
   printf("     \\      /             .'.'| |//\n");
   printf("      '----'            .'.'.-'  / \n");
   printf("                        .'   \\_.'  \n");
-  printf("Written by Joris Hartog\n");
+  printf("Written by Joris Hartog\n\n");
 
+  printf("[ * ] Setting up global descriptor table..\n");
   GlobalDescriptorTable gdt;
-  InterruptManager interrupts(&gdt);
 
+  printf("[ * ] Setting up process manager..\n");
+  ProcessManager processmanager;
+  Process A(&gdt, testA);
+  //Process B(&gdt, testB);
+  processmanager.AddProcess(&A);
+  //processmanager.AddProcess(&B);
+
+  printf("[ * ] Setting up interrupt manager..\n");
+  InterruptManager interrupts(&gdt, &processmanager);
+
+  printf("[ * ] Setting up drivers..\n");
   KeyboardDriver keyboard(&interrupts);
 
+  printf("[ * ] Activating interrupts..\n");
   interrupts.Activate();
 
-  while (1);
+  while(1);
 }

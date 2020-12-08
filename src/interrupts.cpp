@@ -1,10 +1,8 @@
 #include "interrupts.h"
 
-void printf(const char* str);
-
 InterruptHandler::InterruptHandler(
-    uint8_t interrupt,
-    InterruptManager* interruptManager
+    InterruptManager* interruptManager,
+    uint8_t interrupt
 ) {
   this->interrupt = interrupt;
   this->interruptManager = interruptManager;
@@ -43,19 +41,22 @@ void InterruptManager::SetInterruptDescriptorTableEntry(
   interruptDescriptorTable[interrupt].reserved = 0;
 }
 
-InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
+InterruptManager::InterruptManager(
+    GlobalDescriptorTable* gdt,
+    ProcessManager* processManager)
 : picPrimaryCommand(0x20),
   picPrimaryData(0x21),
   picSecondaryCommand(0xA0),
   picSecondaryData(0xA1)
 {
+  this->processManager = processManager;
   uint32_t CodeSegment = gdt->CodeSegmentSelector();
   const uint8_t IDT_INTERRUPT_GATE = 0xE;
 
   for (uint16_t i = 0; i < 256; i++) {
-    handlers[i] = 0;
     SetInterruptDescriptorTableEntry(i, CodeSegment, &InterruptIgnore, 0,
         IDT_INTERRUPT_GATE);
+    handlers[i] = 0;
   }
 
   SetInterruptDescriptorTableEntry(0x20, CodeSegment,
@@ -86,7 +87,9 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
   asm volatile("lidt %0" : : "m" (idt));
 }
 
-InterruptManager::~InterruptManager() {}
+InterruptManager::~InterruptManager() {
+  Deactivate();
+}
 
 void InterruptManager::Activate() {
   if (ActiveInterruptManager != 0)
@@ -96,17 +99,18 @@ void InterruptManager::Activate() {
 }
 
 void InterruptManager::Deactivate() {
-  ActiveInterruptManager = 0;
-  asm("cli");
+  if (ActiveInterruptManager == this) {
+    ActiveInterruptManager = 0;
+    asm("cli");
+  }
 }
 
 uint32_t InterruptManager::HandleInterrupt(
     uint8_t interrupt,
     uint32_t esp
 ) {
-  if (ActiveInterruptManager != 0) {
+  if (ActiveInterruptManager != 0)
     return ActiveInterruptManager->DoHandleInterrupt(interrupt, esp);
-  }
 
   return esp;
 }
@@ -117,10 +121,13 @@ uint32_t InterruptManager::DoHandleInterrupt(
 ) {
   if (handlers[interrupt] != 0) {
     esp = handlers[interrupt]->HandleInterrupt(esp);
-  } else if (interrupt != 0x20) {
-    // Unhandled interrupt which is not a timer interrupt
-    char* foo = "INTERRUPT 0x00\n";
-    char* hex = "0123456789ABCDEF";
+  } else if (interrupt == 0x20) {
+    // Timer interrupt; trigger scheduler
+    esp = (uint32_t)processManager->Schedule((CPUState*)esp);
+  } else {
+    // Unhandled interrupt
+    char* foo = (char*)"INTERRUPT 0x00\n";
+    char* hex = (char*)"0123456789ABCDEF";
 
     foo[12] = hex[(interrupt >> 4) & 0xF];
     foo[13] = hex[interrupt & 0xF];
