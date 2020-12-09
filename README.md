@@ -10,15 +10,14 @@ make install
 
 ## Development
 
-Setup rust:
-
-```
-rustup target add thumbv7em-none-eabihf
-```
+Setup rust dependencies (make sure `rustup` and `qemu` are installed):
 
 ```bash
-vagrant up
+make deps
 ```
 
-This will create a `vos.iso` file which you could use as live ISO for a
-VirtualBox VM.
+You can now compile and run the kernel by executing:
+
+```bash
+make run
+```
